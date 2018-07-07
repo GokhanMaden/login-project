@@ -1,27 +1,31 @@
-const Article = require('../models/Article');
-const User = require('../models/User');
-const fs = require('fs');
-const cloudinary = require('cloudinary');
+const Article = require('./../models/Article')
+const User = require('./../models/User')
+const fs = require('fs')
+const cloudinary = require('cloudinary')
 
 module.exports = {
-    addArticle: (req,res, next) => {
-        let { text, title, claps, description } = req.body;
+    addArticle: (req, res, next) => {
+        let {
+            text,
+            title,
+            claps,
+            description
+        } = req.body
         if (req.files.image) {
             cloudinary.uploader.upload(req.files.image.path, (result) => {
-                let obj = 
-                { 
-                    text, 
-                    title, 
-                    claps, 
-                    description, 
-                    feature_image: result.url != null ? result.url : ''
+                let obj = {
+                    text,
+                    title,
+                    claps,
+                    description,
+                    feature_img: result.url != null ? result.url : ''
                 }
-                saveArticle(obj);
-            },{
+                saveArticle(obj)
+            }, {
                 resource_type: 'image',
-                eager: [
-                    {effect: 'sepia'}
-                ]
+                eager: [{
+                    effect: 'sepia'
+                }]
             })
         } else {
             saveArticle({
@@ -29,30 +33,29 @@ module.exports = {
                 title,
                 claps,
                 description,
-                feature_image: ''
+                feature_img: ''
             })
         }
 
         function saveArticle(obj) {
-            new Artcle(obj).save((error, article) => {
-                if (error) {
-                    res.send(error);
-                } else if (!article){
-                    res.send(400);
-                } else {
-                    return article.addArticle(req.body.author_id)
-                        .then((_article) => {
-                            return res.send(_article);
-                        })
+            new Article(obj).save((err, article) => {
+                if (err)
+                    res.sendStatus(err)
+                else if (!article)
+                    res.sendStatus(400)
+                else {
+                    return article.addAuthor(req.body.author_id).then((_article) => {
+                        return res.sendStatus(_article)
+                    })
                 }
-                next();
+                next()
             })
         }
     },
     getAll: (req, res, next) => {
         Article.find(req.params.id)
             .populate('author')
-            .populate('comments.author').exec((error, article) => {
+            .populate('comments.author').exec((err, article) => {
                 if (err)
                     res.send(err)
                 else if (!article)
@@ -62,28 +65,47 @@ module.exports = {
                 next()
             })
     },
+    /**
+     * article_id
+     */
     clapArticle: (req, res, next) => {
-        Artcile.findById(req.body.article_id)
-            .then((article) => {
-                return article.comment({
-                    author: req.body.author_id,
-                    text: req.body.comment
-                }).then(() => {
-                    return res.json({message: "Done!"})
+        Article.findById(req.body.article_id).then((article) => {
+            return article.clap().then(() => {
+                return res.json({
+                    msg: "Done"
                 })
-            }).catch(next);
+            })
+        }).catch(next)
     },
+    /**
+     * comment, author_id, article_id
+     */
+    commentArticle: (req, res, next) => {
+        Article.findById(req.body.article_id).then((article) => {
+            return article.comment({
+                author: req.body.author_id,
+                text: req.body.comment
+            }).then(() => {
+                return res.json({
+                    msg: "Done"
+                })
+            })
+        }).catch(next)
+    },
+    /**
+     * article_id
+     */
     getArticle: (req, res, next) => {
         Article.findById(req.params.id)
             .populate('author')
-            .populate('commments.author').exec((err, article)=> {
+            .populate('comments.author').exec((err, article) => {
                 if (err)
-                    res.send(err)
+                    res.sendStatus(err)
                 else if (!article)
-                    res.send(404)
+                    res.sendStatus(404)
                 else
-                    res.send(article)
-                next()            
+                    res.sendStatus(article)
+                next()
             })
     }
 }
